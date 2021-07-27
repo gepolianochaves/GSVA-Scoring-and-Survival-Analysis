@@ -46,7 +46,32 @@ library(data.table)
 library(tidyverse)
 ```
 
-# 2\) Gene Expression Matrices
+# 2\) Gene Expression Tables (GETs)
+
+# 2.1) Download and unzip Gene Expression Table
+
+``` bash
+wget https://ftp.ncbi.nlm.nih.gov/geo/series/GSE49nnn/GSE49711/suppl/GSE49711%5FSEQC%5FNB%5FTAV%5FG%5Flog2%2Efinal%2Etxt%2Egz
+gunzip GSE49711_SEQC_NB_TAV_G_log2.final.txt.gz
+```
+
+# 2.2) Pre-process (GET)
+
+``` r
+GSE49711 <-read.delim(
+  "./GSE49711_SEQC_NB_TAV_G_log2.final.txt", 
+  check.names=FALSE)
+
+GSE49711 <- GSE49711[ which(
+  GSE49711$Gene != ''), ]
+
+## Keep only gene names and samples by patient IDs
+GSE49711 <- GSE49711[c(1:55945),c(1,9:506)] ## 1:55945 keeps all genes in the lines; 
+                                            ## 1, genes and 9:506, patient IDs
+rownames(GSE49711) <- GSE49711$Gene
+GSE49711 <- subset(GSE49711, select = -c(Gene))
+GSE49711_GeneMatrix <- as.matrix(GSE49711)
+```
 
 # 2.1) Kocak Gene Expression Matrix
 
@@ -58,7 +83,13 @@ library(tidyverse)
   - Check README file: GSE49711\_SEQC\_NB\_TAV\_ReadMe.final.txt
 
   - Read normalization method: Col 9-506: Gene expression in each sample
-    is calculated as log 2 (FPKM +1).
+    is calculated as log 2 (FPKM +1)
+
+  - The original paper describing the MAV, TAV and TUC pipelines of RNA
+    processing is DOI 10.1186/s13059-015-0694-1
+
+  - Description of TAV RNA-Seq processing is found in Session Raw data
+    preprocessing, read mapping, and gene expression quantification
 
 <!-- end list -->
 
@@ -283,21 +314,21 @@ TPM_GSVA['filenames'] <- rownames(TPM_GSVA)
 qplot(Up_5hmC, Down_5hmC, data = GSE49711_GSVA)
 ```
 
-![](GSVA-Scoring-and-Survival-Analysis_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](GSVA-Scoring-and-Survival-Analysis_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
 ``` r
 ## GSVA 5hmC w/o TPM normalization
 qplot(Up_5hmC, Down_5hmC, data = counts_matrix_GSVA)
 ```
 
-![](GSVA-Scoring-and-Survival-Analysis_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
+![](GSVA-Scoring-and-Survival-Analysis_files/figure-gfm/unnamed-chunk-9-2.png)<!-- -->
 
 ``` r
 ## GSVA 5hmC w/ TPM normalization
 qplot(Up_5hmC, Down_5hmC, data = TPM_GSVA)
 ```
 
-![](GSVA-Scoring-and-Survival-Analysis_files/figure-gfm/unnamed-chunk-7-3.png)<!-- -->
+![](GSVA-Scoring-and-Survival-Analysis_files/figure-gfm/unnamed-chunk-9-3.png)<!-- -->
 
 # 5\) Evaluate KAS-Seq Super-Enhancers in ADRN and MES clustering of cells
 

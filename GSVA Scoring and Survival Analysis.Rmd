@@ -60,7 +60,7 @@ library(tidyverse)
 
 # 2.1) Download and unzip Gene Expression Table
 
-```{bash}
+```{bash, eval = F}
 wget https://ftp.ncbi.nlm.nih.gov/geo/series/GSE49nnn/GSE49711/suppl/GSE49711%5FSEQC%5FNB%5FTAV%5FG%5Flog2%2Efinal%2Etxt%2Egz
 gunzip GSE49711_SEQC_NB_TAV_G_log2.final.txt.gz
 ```
@@ -84,7 +84,7 @@ GSE49711_GeneMatrix <- as.matrix(GSE49711)
 ```
 
 
-# 2.1) Kocak Gene Expression Matrix
+# 2.3) Kocak Gene Expression Matrix
 
 * Gene Expression Table (GET) was SEQC_NB_TAV_G_log2.final.txt.gz
 
@@ -109,7 +109,7 @@ GSE49711 <- subset(GSE49711, select = -c(Gene))
 GSE49711_GeneMatrix <- as.matrix(GSE49711)
 ```
 
-# 2.2) 5hmC Counts and TPM Gene Expression Matrices
+# 2.4) 5hmC Counts and TPM Gene Expression Matrices
 
 ```{r}
 counts_matrix <- read.delim("./count_matrix_geo1.txt",
