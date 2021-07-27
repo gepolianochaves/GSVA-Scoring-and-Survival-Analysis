@@ -1,0 +1,201 @@
+---
+title: "GSVA Kocak dataset, 5hmC counts and 5hmC counts TPM"
+author: "Gepoliano Chaves, Ph. D."
+date: "July 26th, 2021"
+#output: revealjs::revealjs_presentation
+#output: html_notebook
+#output: beamer_presentation
+output: github_document
+#output: html_vignette
+#output: ioslides_presentation
+#output: slidy_presentation 
+#output: tufte::tufte_book
+#output: pdf_document
+---
+
+# 1) Load Required Libraries
+
+```{r, warning=F, message=F, eval = T}
+# DGE DESeq2, PCA and Heatmap
+library(readxl)
+library(DESeq2)
+library(ggfortify)
+library(ComplexHeatmap)
+library(cluster)
+library(fgsea)
+library(DT)
+library(tibble)
+library(dplyr)
+
+## Enrichment and Pathway Analysis
+library(clusterProfiler)
+library(enrichplot)
+library(ggplot2)
+library(enrichR)
+library(pheatmap)
+
+## Dimension Reduction UMAP and tSNE
+library(Rtsne)
+library(umap)
+
+## Function: drop_na() -> Drop rows containing missing values
+library("tidyr")
+## Read a delimited file (including csv & tsv) into a tibble
+library("readr")
+
+## GSVA Analysis
+library(GSVA)
+library(GSVAdata)
+library(GSEABase)
+
+library(hrbrthemes)
+library(viridis)
+library("ggpubr")
+
+library(data.table)
+library(tidyverse)
+```
+
+# 2) Gene Expression Matrices
+
+# 2.1) Kocak Gene Expression Matrix
+
+```{r}
+GSE49711 <-read.delim(
+  "./GSE49711.txt", 
+  check.names=FALSE)
+
+rownames(GSE49711) <- GSE49711$Gene
+GSE49711 <- subset(GSE49711, select = -c(Gene))
+GSE49711_GeneMatrix <- as.matrix(GSE49711)
+```
+
+# 2.2) 5hmC Counts and TPM Gene Expression Matrices
+
+```{r}
+counts_matrix <- read.delim("./count_matrix_geo1.txt",
+                            check.names = FALSE)
+
+## create TPM function
+counts_to_tpm <- function(countMat, geneLengths) {
+
+    rpk = countMat / (geneLengths/1000)          # Reads per kilobase
+    scalingFactors = colSums(rpk, na.rm=TRUE) / 10^6   # "Per million" scaling factor
+    tpm = t( t(rpk) / scalingFactors)         # Transcripts per million
+
+    return(tpm)
+}
+
+## import gene lengths 
+gene_length <- read_tsv("~/Desktop/mart_lengths.txt") %>% drop_na() %>% rename(GS = `Gene start (bp)`) %>% 
+   rename(GE = `Gene end (bp)`) %>%
+   rename(gene = `Gene name`) %>% 
+   mutate(length=GE-GS) %>% 
+   rename(chrom = `Chromosome/scaffold name`) %>%
+   mutate(chrom = as.numeric(chrom)) %>%
+   drop_na()
+
+## generate list of my genes from count matrix 
+gene_list <- as.data.frame(counts_matrix$gene) %>% rename(gene = `counts_matrix$gene`)
+
+## annotate my counts matrix with gene length 
+x <- left_join(gene_list, gene_length) %>% drop_na() %>%
+   left_join(counts_matrix) 
+
+## identify duplicated genes 
+duplicates <-data.frame(table(x$gene)) %>%
+   dplyr::filter(Freq>1)
+
+## remove duplicated genes from annotated count matrix 
+x <- subset(x, !(x$gene %in% duplicates$Var1))
+
+## remove annotation from count matrix 
+counts_matrix2 <- x %>%
+   dplyr::select(-chrom, -GE, - GS, -length) %>%
+   data.matrix()
+
+## isolate gene legnth & gene list 
+gene_length<- x %>% dplyr::select(length)
+gene_list <- x %>% dplyr::select(gene)
+
+## run TPM function
+tpm <- counts_to_tpm(counts_matrix2, gene_length$length) %>% as.data.frame()
+
+## add gene names 
+tpm$gene <- gene_list
+
+## make rownames = first column 
+tpm<-tpm[,-1]
+rownames(tpm)<-gene_list$gene
+
+```
+
+# 3) Construct GSVA Data-Frames
+
+# 3.1) Kocak
+
+```{r}
+cfDNA_PCA_gene_list <- getGmt("./cfDNA_genes_PCA.txt")
+
+GSE49711_GSVA <- gsva(GSE49711_GeneMatrix, 
+                          cfDNA_PCA_gene_list, 
+                          min.sz=1, max.sz=Inf, 
+                          verbose=TRUE)
+
+GSE49711_GSVA <- data.frame(t(GSE49711_GSVA))
+
+## Creates the filenames column
+GSE49711_GSVA['filenames'] <- rownames(GSE49711_GSVA)
+```
+
+# 3.2) 5hmC counts
+
+```{r}
+cfDNA_PCA_gene_list <- getGmt("./cfDNA_genes_PCA.txt")
+
+row.names(counts_matrix) <- counts_matrix$gene
+counts_matrix <- subset(counts_matrix, select = -c(gene))
+counts_matrix <- as.matrix(counts_matrix)
+
+counts_matrix_GSVA <- gsva(counts_matrix, 
+                          cfDNA_PCA_gene_list, 
+                          min.sz=1, max.sz=Inf, 
+                          verbose=TRUE)
+
+counts_matrix_GSVA <- data.frame(t(counts_matrix_GSVA))
+
+## Creates the filenames column
+counts_matrix_GSVA['filenames'] <- rownames(counts_matrix_GSVA)
+```
+
+# 3.3) 5hmC TPM
+
+```{r}
+cfDNA_PCA_gene_list <- getGmt("./cfDNA_genes_PCA.txt")
+
+row.names(tpm) <- row.names(tpm)
+tpm <- as.matrix(tpm)
+
+TPM_GSVA <- gsva(tpm, 
+                 cfDNA_PCA_gene_list,
+                 min.sz=1, max.sz=Inf, 
+                 verbose=TRUE)
+
+TPM_GSVA <- data.frame(t(TPM_GSVA))
+
+## Creates the filenames column
+TPM_GSVA['filenames'] <- rownames(TPM_GSVA)
+```
+
+# 4) Plot GSVA Scores
+
+```{r}
+## GSVA Kocak dataset
+qplot(Up_5hmC, Down_5hmC, data = GSE49711_GSVA)
+## GSVA 5hmC w/o TPM normalization
+qplot(Up_5hmC, Down_5hmC, data = counts_matrix_GSVA)
+## GSVA 5hmC w/ TPM normalization
+qplot(Up_5hmC, Down_5hmC, data = TPM_GSVA)
+
+```
+
