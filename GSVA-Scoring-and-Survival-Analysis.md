@@ -286,3 +286,16 @@ qplot(Up_5hmC, Down_5hmC, data = TPM_GSVA)
 ```
 
 ![](GSVA-Scoring-and-Survival-Analysis_files/figure-gfm/unnamed-chunk-7-3.png)<!-- -->
+
+# 5\) Evaluate KAS-Seq Super-Enhancers in ADRN and MES clustering of cells
+
+  - Transfer BED and GTF files to joint GSVA analysis folder
+
+  - Turn off chunk evaluation
+
+<!-- end list -->
+
+``` bash
+cp ~/Desktop/Gepoliano/bedtools_super-enhancers/SE_bed_files/ADRN_MES_Ctl_cat_raw* \
+~/Desktop/Gepoliano/GSVA\ Scoring\ and\ Survival\ Analysis/
+```
