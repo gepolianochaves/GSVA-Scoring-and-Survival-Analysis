@@ -60,6 +60,15 @@ library(tidyverse)
 
 # 2.1) Kocak Gene Expression Matrix
 
+* Gene Expression Table (GET) was SEQC_NB_TAV_G_log2.final.txt.gz
+
+* GET was downloaded from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE49711
+
+* Check README file: GSE49711_SEQC_NB_TAV_ReadMe.final.txt
+
+* Read normalization method: Col 9-506: Gene expression in each sample is calculated as log 2 (FPKM +1).
+
+
 ```{r}
 GSE49711 <-read.delim(
   "./GSE49711.txt", 
